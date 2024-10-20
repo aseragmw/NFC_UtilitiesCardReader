@@ -1,9 +1,9 @@
-package com.example.nfccardreader
+package com.example.nfccardreader.helper_classes
 
-import android.content.Context
 import android.nfc.tech.IsoDep
 import android.util.Log
-import android.widget.Toast
+import com.example.nfccardreader.data.entities.CardResult
+import com.example.nfccardreader.data.entities.CardType
 import java.io.IOException
 import java.util.Arrays
 
@@ -81,20 +81,20 @@ class CardReaderHelper {
         )
         val stringRep2 = Arrays.toString(selectWaFileResponse)
         Log.d("Select WA file from new water", stringRep2)
-        val byteArrayOne = stringRep.replace("[", "").replace("]","").replace(" ","").split(",")
-        val byteArrayTwo = stringRep2.replace("[", "").replace("]","").replace(" ","").split(",")
+        val byteArrayOne = stringRep.replace("[", "").replace("]", "").replace(" ", "").split(",")
+        val byteArrayTwo = stringRep2.replace("[", "").replace("]", "").replace(" ", "").split(",")
         val success =
             byteArrayOne.size >= 2 && byteArrayTwo.size >= 2 && byteArrayOne[byteArrayOne.size - 2] == "-112" && byteArrayOne[byteArrayOne.size - 1] == "0" && byteArrayTwo[byteArrayTwo.size - 2] == "-112" && byteArrayTwo[byteArrayTwo.size - 1] == "0"
         var type = CardType.NOT_SPECIFIED
         if (success) {
             Log.d("Success", "Success New Water")
             type = CardType.NEW_WATER
-        }
-        else{
+        } else {
             Log.d("Success", "Failure New Water")
         }
         val serial = getCardSerial(isoDep)
-        return CardResult(true, serial, type)
+        val buffer = fromBytesToHex(getCardBuffer(isoDep))
+        return CardResult(true, serial, type, buffer)
 
     }
 
@@ -112,7 +112,7 @@ class CardReaderHelper {
         val stringRep = Arrays.toString(sendAppletResponse)
         Log.d("Select applet from old water", stringRep)
 
-        val byteArrayOne = stringRep.replace("[", "").replace("]","").replace(" ","").split(",")
+        val byteArrayOne = stringRep.replace("[", "").replace("]", "").replace(" ", "").split(",")
         Log.d("Old array", byteArrayOne[byteArrayOne.size - 2])
         Log.d("Old array", byteArrayOne[byteArrayOne.size - 1])
         val success =
@@ -121,12 +121,13 @@ class CardReaderHelper {
         if (success) {
             Log.d("Success", "Success Old Water")
             type = CardType.OLD_WATER
-        }
-        else{
+        } else {
             Log.d("Success", "Failure Old Water")
         }
         val serial = getCardSerial(isoDep)
-        return CardResult(true, serial, type)
+        val buffer = fromBytesToHex(getCardBuffer(isoDep))
+
+        return CardResult(true, serial, type, buffer)
     }
 
     fun unifiedElecCardFunCall(isoDep: IsoDep)
@@ -169,21 +170,22 @@ class CardReaderHelper {
         Log.d("Select file two from unified elec", stringRep3)
 //        Toast.makeText(this, "Select file two: $stringRep3", Toast.LENGTH_LONG).show()
 
-        val byteArrayOne = stringRep.replace("[", "").replace("]","").replace(" ","").split(",")
-        val byteArrayTwo = stringRep2.replace("[", "").replace("]","").replace(" ","").split(",")
-        val byteArrayThree = stringRep3.replace("[", "").replace("]","").replace(" ","").split(",")
+        val byteArrayOne = stringRep.replace("[", "").replace("]", "").replace(" ", "").split(",")
+        val byteArrayTwo = stringRep2.replace("[", "").replace("]", "").replace(" ", "").split(",")
+        val byteArrayThree =
+            stringRep3.replace("[", "").replace("]", "").replace(" ", "").split(",")
         val success =
             byteArrayOne.size >= 2 && byteArrayTwo.size >= 2 && byteArrayThree.size >= 2 && byteArrayOne[byteArrayOne.size - 2] == "-112" && byteArrayOne[byteArrayOne.size - 1] == "0" && byteArrayTwo[byteArrayTwo.size - 2] == "-112" && byteArrayTwo[byteArrayTwo.size - 1] == "0" && byteArrayThree[byteArrayThree.size - 2] == "-112" && byteArrayThree[byteArrayThree.size - 1] == "0"
         var type = CardType.NOT_SPECIFIED
         if (success) {
             Log.d("Success", "Success Unified Elec")
             type = CardType.UNIFIED_ELECTRIC
-        }
-        else{
+        } else {
             Log.d("Success", "Failure Unified Elec")
         }
         val serial = getCardSerial(isoDep)
-        return CardResult(true, serial, type)
+        val buffer = fromBytesToHex(getCardBuffer(isoDep))
+        return CardResult(true, serial, type, buffer)
     }
 
     fun oldElecCardFunCall(isoDep: IsoDep): CardResult {
@@ -211,21 +213,20 @@ class CardReaderHelper {
         )
         val stringRep2 = Arrays.toString(selectFileTwoResponse)
         Log.d("Select file two from old elec", stringRep2)
-        val byteArrayOne = stringRep.replace("[", "").replace("]","").replace(" ","").split(",")
-        val byteArrayTwo = stringRep2.replace("[", "").replace("]","").replace(" ","").split(",")
+        val byteArrayOne = stringRep.replace("[", "").replace("]", "").replace(" ", "").split(",")
+        val byteArrayTwo = stringRep2.replace("[", "").replace("]", "").replace(" ", "").split(",")
         val success =
             byteArrayOne.size >= 2 && byteArrayTwo.size >= 2 && byteArrayOne[byteArrayOne.size - 2] == "-112" && byteArrayOne[byteArrayOne.size - 1] == "0" && byteArrayTwo[byteArrayTwo.size - 2] == "-112" && byteArrayTwo[byteArrayTwo.size - 1] == "0"
         var type = CardType.NOT_SPECIFIED
         if (success) {
             Log.d("Success", "Success Old Elec")
             type = CardType.OLD_ELECTRIC
-        }
-        else{
+        } else {
             Log.d("Success", "Failure Old Elec")
         }
         val serial = getCardSerial(isoDep)
-        return CardResult(true, serial, type)
-
+        val buffer = fromBytesToHex(getCardBuffer(isoDep))
+        return CardResult(true, serial, type, buffer)
     }
 
 
@@ -292,5 +293,34 @@ class CardReaderHelper {
             return "Couldn't get serial"
         }
     }
+
+    fun getCardBuffer(isoDep: IsoDep): ByteArray {
+        // Initialize an empty ByteArray to store the full buffer
+        val bufferList = mutableListOf<Byte>()
+
+        // Loop through the 20 sectors
+        for (i in 0 until 20) {
+            // APDU command parameters
+            val cla: Byte = 0x00
+            val ins: Byte = 0xB0.toByte()
+            val p1: Byte = i.toByte() // sector index
+            val p2: Byte = 0x40 // fixed value
+            val le: Int = 0x40 // Length of the expected response (64 bytes)
+
+            // Send APDU command to read each sector
+            val sectorData: ByteArray? = sendApduCommand(isoDep, cla, ins, p1, p2, le = le)
+            // If the response is not null, add it to the buffer list
+            if (sectorData != null ) {
+                bufferList.addAll(sectorData.toList()) // Add the 64-byte sector data
+            } else {
+                // Handle the case where the data is invalid (e.g., sector not readable)
+                println("Error reading sector $i or invalid sector size")
+            }
+        }
+
+        // Convert the MutableList of Bytes to ByteArray and return the full buffer
+        return bufferList.toByteArray()
+    }
+
 
 }

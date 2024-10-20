@@ -1,4 +1,4 @@
-package com.example.nfccardreader
+package com.example.nfccardreader.data.entities
 
 enum class CardType{
     NEW_WATER,
